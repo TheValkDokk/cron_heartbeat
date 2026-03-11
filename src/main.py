@@ -14,7 +14,7 @@ from . import models, schemas
 from .database import engine, get_db, Base
 from .agent_runner import execute_agent_task
 from .scheduler_service import get_scheduler, sync_jobs_from_db, register_job, remove_job
-from .auth import get_password_hash, verify_password, create_access_token, get_current_user, get_current_user_query
+from .auth import create_access_token, get_current_user, get_current_user_query
 from .config import settings
 import sentry_sdk
 

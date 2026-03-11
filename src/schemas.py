@@ -41,17 +41,9 @@ class AgentResponse(AgentBase):
 class UserBase(BaseModel):
     username: str
 
-class UserCreate(BaseModel):
-    username: str
-    email: Optional[str] = None
-    password: str
-
 class Token(BaseModel):
     access_token: str
     token_type: str
-
-class TokenData(BaseModel):
-    username: Optional[str] = None
 
 class UserResponse(UserBase):
     id: int
