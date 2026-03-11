@@ -4,4 +4,21 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "alembic>=1.18.4",
+    "apscheduler>=3.11.2",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.135.1",
+    "google-genai>=1.66.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "passlib[argon2]>=1.7.4",
+    "pgvector>=0.4.2",
+    "psycopg2-binary>=2.9.11",
+    "pydantic-settings>=2.13.1",
+    "python-jose>=3.5.0",
+    "python-multipart>=0.0.22",
+    "sentry-sdk[fastapi]>=2.54.0",
+    "sqlalchemy[asyncio]>=2.0.48",
+    "uvicorn>=0.41.0",
+]

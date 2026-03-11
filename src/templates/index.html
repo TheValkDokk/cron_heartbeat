@@ -1,0 +1,1013 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cron Heartbeat Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --back-main: #0a0a0b;
+            --back-secondary: #141416;
+            --back-tertiary: #1f1f23;
+            --accent: #5e6ad2;
+            --accent-hover: #727ee6;
+            --text-main: #f3f3f6;
+            --text-muted: #9ba1a6;
+            --border: #2d2d31;
+            
+            --agent-msg-bg: #1f1f23;
+            --user-msg-bg: #5e6ad2;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--back-main);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR (AGENTS) */
+        .sidebar {
+            width: 280px;
+            background-color: var(--back-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .sidebar-header h1 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-main);
+            letter-spacing: -0.01em;
+            margin-bottom: 16px;
+        }
+
+        select, input, button {
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+        }
+
+        .user-profile {
+            width: 100%;
+            background-color: var(--back-tertiary);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 10px 12px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-profile button {
+            background: transparent;
+            color: var(--text-muted);
+            border: none;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .user-profile button:hover { color: #fff; }
+
+        /* LOGIN OVERLAY */
+        .auth-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(10, 10, 11, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .auth-box {
+            background: var(--back-secondary);
+            border: 1px solid var(--border);
+            padding: 30px;
+            border-radius: 12px;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .auth-box h2 { text-align: center; margin-bottom: 10px; }
+        .auth-input {
+            background: var(--back-main);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            width: 100%;
+        }
+        .auth-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .auth-btn:hover { background: var(--accent-hover); }
+        .auth-switch { text-align: center; font-size: 12px; color: var(--text-muted); cursor: pointer; }
+        .auth-switch:hover { color: white; }
+
+
+        .agent-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 10px;
+        }
+
+        .agent-item {
+            padding: 12px 16px;
+            margin-bottom: 4px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .agent-item:hover {
+            background-color: var(--back-tertiary);
+        }
+
+        .agent-item.active {
+            background-color: var(--accent);
+            color: #fff;
+        }
+
+        .agent-item .name { font-weight: 500; }
+        .agent-item .id { font-size: 12px; color: var(--text-muted); }
+        .agent-item.active .id { color: #d0d4fb; }
+        .agent-item .del-btn {
+            display: none;
+            margin-left: auto;
+            background: transparent;
+            border: none;
+            color: #e05252;
+            cursor: pointer;
+            font-size: 15px;
+            padding: 2px 4px;
+            border-radius: 4px;
+            line-height: 1;
+            flex-shrink: 0;
+            align-self: center;
+        }
+        .agent-item:hover .del-btn { display: block; }
+        .agent-item.active .del-btn { display: block; color: #ffaaaa; }
+
+        /* CREATE AGENT PANEL */
+        .create-agent-panel {
+            margin: 16px 10px;
+            padding: 16px;
+            background: var(--back-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .create-agent-title { font-weight: 600; font-size: 13px; color: var(--text-main); }
+        .create-agent-sub { font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+        .create-agent-input {
+            width: 100%;
+            background: var(--back-main);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 9px 11px;
+            border-radius: 7px;
+            outline: none;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            resize: vertical;
+            transition: border 0.2s;
+        }
+        .create-agent-input:focus { border-color: var(--accent); }
+        .create-agent-btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 7px;
+            padding: 9px 12px;
+            font-weight: 500;
+            font-size: 13px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .create-agent-btn:hover { background: var(--accent-hover); }
+
+        /* MAIN AREA */
+        .main-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--back-main);
+        }
+
+        .top-bar {
+            height: 65px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            justify-content: space-between;
+        }
+
+        .top-bar-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .tabs { display: flex; gap: 16px; }
+        .tab {
+            color: var(--text-muted);
+            cursor: pointer;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .tab.active { color: var(--text-main); }
+        .tab:hover { color: var(--text-main); }
+
+        /* CONTENT VIEWS */
+        .content-view {
+            flex: 1;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .content-view.active { display: flex; }
+
+        /* CHAT VIEW */
+        .chat-log {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .msg-container {
+            display: flex;
+            width: 100%;
+        }
+
+        .msg {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+        }
+
+        .msg.user {
+            background-color: var(--user-msg-bg);
+            color: white;
+            margin-left: auto;
+            border-bottom-right-radius: 4px;
+        }
+
+        .msg.agent {
+            background-color: var(--agent-msg-bg);
+            color: var(--text-main);
+            margin-right: auto;
+            border-bottom-left-radius: 4px;
+            border: 1px solid var(--border);
+        }
+
+        .msg.cron {
+            background-color: var(--back-tertiary);
+            color: var(--text-main);
+            margin: 8px auto;
+            border-radius: 6px;
+            border: 1px dashed var(--border);
+            font-size: 13px;
+            text-align: center;
+            width: 80%;
+        }
+
+        .tool-call {
+            margin-top: 8px;
+            padding: 8px;
+            background-color: var(--back-main);
+            border-radius: 6px;
+            font-size: 12px;
+            font-family: monospace;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+        }
+
+        .chat-input-area {
+            padding: 20px 24px;
+            background-color: var(--back-secondary);
+            border-top: 1px solid var(--border);
+        }
+
+        .input-wrapper {
+            display: flex;
+            gap: 12px;
+            background-color: var(--back-main);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 8px 12px;
+            transition: border 0.2s;
+        }
+
+        .input-wrapper:focus-within {
+            border-color: var(--accent);
+        }
+
+        .input-wrapper input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            color: var(--text-main);
+            outline: none;
+        }
+
+        .input-wrapper button {
+            background-color: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .input-wrapper button:hover { background-color: var(--accent-hover); }
+
+        /* CRON JOBS VIEW */
+        .jobs-view { padding: 32px; overflow-y: auto; flex: 1; }
+        .jobs-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .jobs-toolbar h2 { font-size: 15px; font-weight: 600; }
+        .add-job-form { display: flex; gap: 10px; margin-bottom: 24px; flex-wrap: wrap; }
+        .add-job-form input { background: var(--back-tertiary); border: 1px solid var(--border); color: var(--text-main); padding: 9px 12px; border-radius: 8px; outline: none; flex: 1; min-width: 160px; transition: border 0.2s; }
+        .add-job-form input:focus { border-color: var(--accent); }
+        .add-job-form button { background: var(--accent); color: white; border: none; border-radius: 8px; padding: 9px 18px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background 0.2s; }
+        .add-job-form button:hover { background: var(--accent-hover); }
+        .jobs-table { width: 100%; border-collapse: collapse; }
+        .jobs-table th { text-align: left; font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; padding: 0 16px 12px; }
+        .jobs-table td { padding: 14px 16px; font-size: 14px; border-top: 1px solid var(--border); vertical-align: middle; }
+        .jobs-table tr:hover td { background: var(--back-secondary); }
+        .badge { display: inline-block; font-family: monospace; font-size: 12px; background: var(--back-tertiary); border: 1px solid var(--border); border-radius: 6px; padding: 3px 8px; color: var(--accent-hover); }
+        
+        .empty-state {
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        /* UTILS */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>Intelligence OS</h1>
+            <div class="user-profile" id="userProfile" style="display: none;">
+                <span id="loggedInUsername">@user</span>
+                <button onclick="logout()">Logout</button>
+            </div>
+        </div>
+        <div class="agent-list" id="agentList">
+            <!-- Agents injected here -->
+        </div>
+    </div>
+
+    <div class="main-area">
+        <div class="top-bar" id="topBar" style="display: none;">
+            <div class="top-bar-title" id="activeAgentName">Select an Agent</div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('chat')">Chat</div>
+                <div class="tab" onclick="switchTab('jobs')">Cron Jobs</div>
+                <div class="tab" onclick="switchTab('settings')">Settings</div>
+            </div>
+            <div id="chatActions" style="display: flex; align-items: center; padding-left: 16px;">
+                <button onclick="clearConversations()" title="Clear Chat History" style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;">🧹</button>
+            </div>
+        </div>
+
+        <div id="chatView" class="content-view active">
+            <div class="chat-log" id="chatLog">
+                <div class="empty-state">Select an agent to begin communication.</div>
+            </div>
+            <div class="chat-input-area" id="chatInputArea" style="display: none;">
+                <div class="input-wrapper">
+                    <input type="text" id="chatInput" placeholder="Send a message..." onkeypress="handleEnter(event)">
+                    <button id="sendBtn" onclick="sendMessage()">Send</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="jobsView" class="content-view">
+            <div class="jobs-view" id="jobsList">
+                <div class="empty-state">No jobs found for this agent.</div>
+            </div>
+        </div>
+
+        <div id="settingsView" class="content-view">
+            <div class="jobs-toolbar">
+                <h2>Agent Config</h2>
+            </div>
+            <div style="padding: 24px; display: flex; flex-direction: column; gap: 16px;">
+                <div style="background: var(--back-secondary); padding: 16px; border-radius: 8px; border: 1px solid var(--border);">
+                    <h3 style="margin-top: 0; font-size: 14px;">Webhooks</h3>
+                    <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 12px;">These URLs allow the agent to use 'send_discord_message' and 'send_slack_message' tools securely.</p>
+                    
+                    <label style="display:block; font-size: 13px; font-weight: 500; margin-bottom: 4px;">Slack Webhook URL</label>
+                    <input id="slackWebhook" class="create-agent-input" placeholder="https://hooks.slack.com/services/..." style="width: 100%; margin-bottom: 12px;" />
+                    
+                    <label style="display:block; font-size: 13px; font-weight: 500; margin-bottom: 4px;">Discord Webhook URL</label>
+                    <input id="discordWebhook" class="create-agent-input" placeholder="https://discord.com/api/webhooks/..." style="width: 100%; margin-bottom: 16px;" />
+                    
+                    <button class="create-agent-btn" onclick="saveAgentSettings()">Save Settings</button>
+                    <div id="settingsSaveStatus" style="font-size: 12px; margin-top: 8px; color: #4ade80;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login/Signup Overlay -->
+    <div class="auth-overlay" id="authOverlay">
+        <div class="auth-box">
+            <h2 id="authTitle">Intelligence OS</h2>
+            <p style="font-size: 13px; color: var(--text-muted); text-align: center; margin-top: -10px; margin-bottom: 20px;">Enter your workspace to continue</p>
+            <input type="text" id="authUsername" class="auth-input" placeholder="Username or Workspace Name" />
+            <button class="auth-btn" id="authActionBtn" onclick="handleAuth()">Enter Workspace</button>
+            <div id="authError" style="color: #ffaaaa; font-size: 12px; text-align: center; display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Log Viewer Overlay -->
+    <div class="auth-overlay" id="logOverlay" style="display: none;">
+        <div class="auth-box" style="width: 600px; max-width: 90vw; max-height: 80vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <h2 style="margin: 0;">Job Execution Logs</h2>
+                <button onclick="document.getElementById('logOverlay').style.display='none'" style="background:transparent; border:none; color:var(--text-main); cursor:pointer; font-size: 20px;">&times;</button>
+            </div>
+            <div id="logContent" style="flex: 1; overflow-y: auto; background: #111; padding: 16px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #eee; white-space: pre-wrap;">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null; // User object
+        let currentAgent = null;
+        let eventSource = null;
+        let isSignup = false;
+
+        function getAuthHeaders() {
+            const token = localStorage.getItem('token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        }
+
+        async function handleAuth() {
+            const username = document.getElementById('authUsername').value.trim();
+            const errDiv = document.getElementById('authError');
+            
+            if(!username) {
+                errDiv.innerText = "Please enter a workspace name";
+                errDiv.style.display = 'block';
+                return;
+            }
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', username);
+                formData.append('password', 'dummy_password');
+
+                const res = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData.toString()
+                });
+                
+                if (!res.ok) throw new Error('Failed to enter workspace');
+                
+                const data = await res.json();
+                localStorage.setItem('token', data.access_token);
+                
+                document.getElementById('authOverlay').style.display = 'none';
+                checkAuth(); // init
+
+            } catch (e) {
+                errDiv.innerText = e.message;
+                errDiv.style.display = 'block';
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            currentUser = null;
+            if(eventSource) eventSource.close();
+            resetMainArea();
+            document.getElementById('agentList').innerHTML = '';
+            document.getElementById('userProfile').style.display = 'none';
+            document.getElementById('authOverlay').style.display = 'flex';
+        }
+
+        // Init
+        async function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                document.getElementById('authOverlay').style.display = 'flex';
+                return;
+            }
+
+            try {
+                const res = await fetch('/users/me', { headers: getAuthHeaders() });
+                if (!res.ok) {
+                    logout();
+                    return;
+                }
+                const user = await res.json();
+                currentUser = user;
+                
+                document.getElementById('authOverlay').style.display = 'none';
+                document.getElementById('userProfile').style.display = 'flex';
+                document.getElementById('loggedInUsername').innerText = `@${user.username}`;
+                
+                loadUserAgents(user);
+            } catch (e) {
+                console.error("Auth check failed", e);
+                logout();
+            }
+        }
+
+        function loadUserAgents(user) {
+            try {
+                const agentList = document.getElementById('agentList');
+                agentList.innerHTML = '';
+                
+                if (user && user.agents && user.agents.length > 0) {
+                    user.agents.forEach(agent => {
+                        const div = document.createElement('div');
+                        div.className = 'agent-item';
+                        div.style.display = 'flex';
+                        div.style.alignItems = 'center';
+                        div.onclick = (e) => {
+                            if (!e.target.closest('.del-btn')) selectAgent(agent, div);
+                        };
+                        div.innerHTML = `
+                            <div style="flex:1; min-width:0;">
+                                <div class="name">${agent.name}</div>
+                                <div class="id">ID: ${agent.id}</div>
+                            </div>
+                            <button class="del-btn" title="Delete agent" onclick="deleteAgent(event, ${agent.id}, '${agent.name}')">&#x1F5D1;</button>
+                        `;
+                        agentList.appendChild(div);
+                    });
+                } else {
+                    agentList.innerHTML = `
+                        <div class="create-agent-panel">
+                            <div class="create-agent-title">No agents yet</div>
+                            <div class="create-agent-sub">Create your first agent for this workspace.</div>
+                            <input id="newAgentName" class="create-agent-input" placeholder="Agent name" />
+                            <textarea id="newAgentPrompt" class="create-agent-input" placeholder="System prompt (e.g. You are a helpful scheduler assistant.)" rows="3"></textarea>
+                            <button class="create-agent-btn" onclick="createAgent()">+ Create Agent</button>
+                        </div>`;
+                }
+                
+                resetMainArea();
+                connectSSE();
+            } catch (e) {
+                console.error("Failed to load agents", e);
+            }
+        }
+
+        function resetMainArea() {
+            currentAgent = null;
+            document.getElementById('topBar').style.display = 'none';
+            document.getElementById('chatInputArea').style.display = 'none';
+            document.getElementById('chatLog').innerHTML = '<div class="empty-state">Select an agent to begin communication.</div>';
+            
+            // Remove active classes
+            document.querySelectorAll('.agent-item').forEach(el => el.classList.remove('active'));
+        }
+
+        function selectAgent(agent, el) {
+            currentAgent = agent;
+            
+            // UI selections
+            document.querySelectorAll('.agent-item').forEach(item => item.classList.remove('active'));
+            if(el) el.classList.add('active');
+            
+            document.getElementById('topBar').style.display = 'flex';
+            document.getElementById('chatInputArea').style.display = 'block';
+            document.getElementById('activeAgentName').textContent = agent.name;
+            
+            // Clear chat and setup tabs
+            document.getElementById('chatLog').innerHTML = '';
+            loadChatHistory();
+            switchTab('chat');
+        }
+
+        function connectSSE() {
+            if (eventSource) {
+                eventSource.close();
+            }
+            if (!currentUser) return;
+
+            const token = localStorage.getItem('token');
+            console.log(`Connecting SSE for user ${currentUser.id}...`);
+            eventSource = new EventSource(`/users/${currentUser.id}/stream?token=${token}`);
+            
+            eventSource.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                console.log("SSE Received:", data);
+                
+                if (data.type === 'cron_result') {
+                    // Only show alert/message if it's for the currently viewed agent, 
+                    // or if it's a broadcast (which we'll just show anyway)
+                    appendMessage('cron', data.content);
+                }
+            };
+
+            eventSource.onerror = (e) => {
+                console.error("SSE Error, reconnecting...", e);
+                // EventSource auto-reconnects by default
+            };
+        }
+
+        async function loadChatHistory() {
+            if (!currentUser || !currentAgent) return;
+            const log = document.getElementById('chatLog');
+            log.innerHTML = '<div class="empty-state">Loading history...</div>';
+
+            try {
+                const headers = getAuthHeaders();
+                const res = await fetch(`/users/${currentUser.id}/messages?limit=50`, { headers });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const messages = await res.json();
+                
+                log.innerHTML = '';
+                if (messages.length === 0) {
+                    appendMessage('agent', `Connected to core instance. How can I assist you today?`);
+                } else {
+                    messages.forEach(m => {
+                        // For history, we only show messages relevant to this agent (chat_agent_id)
+                        // OR cron results (which are global workspace broadcasts)
+                        if (m.chat_agent_id === currentAgent.id || m.source === 'cron') {
+                            appendMessage(m.source, m.content);
+                        }
+                    });
+                }
+            } catch (e) {
+                console.error("Failed to load history", e);
+                appendMessage('agent', `Connected to core instance. [History could not be loaded]`);
+            }
+        }
+
+        async function createAgent() {
+            const name = document.getElementById('newAgentName')?.value.trim();
+            const prompt = document.getElementById('newAgentPrompt')?.value.trim();
+            if (!name || !prompt || !currentUser) return;
+
+            try {
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+                const res = await fetch('/agents/', {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ name, system_prompt: prompt, owner_id: currentUser.id })
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                // Refresh the list by re-checking auth which reloads /users/me
+                checkAuth();
+            } catch (err) {
+                alert('Failed to create agent: ' + err.message);
+            }
+        }
+
+        async function deleteAgent(e, agentId, agentName) {
+            e.stopPropagation();
+            if (!confirm(`Delete "${agentName}" and all its cron jobs? This cannot be undone.`)) return;
+            try {
+                const res = await fetch(`/agents/${agentId}`, { method: 'DELETE', headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                if (currentAgent && currentAgent.id === agentId) resetMainArea();
+                checkAuth();
+            } catch (err) {
+                alert('Failed to delete agent: ' + err.message);
+            }
+        }
+
+        async function clearConversations() {
+            if (!currentAgent) return;
+            if (!confirm(`Are you sure you want to clear all conversation history for "${currentAgent.name}"? This cannot be undone.`)) return;
+            
+            try {
+                const res = await fetch(`/agents/${currentAgent.id}/messages`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                
+                // Reload history
+                loadChatHistory();
+            } catch (err) {
+                alert('Failed to clear conversations: ' + err.message);
+            }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.content-view').forEach(v => v.classList.remove('active'));
+            const chatActions = document.getElementById('chatActions');
+            if (chatActions) chatActions.style.display = 'none';
+            
+            if (tab === 'chat') {
+                document.querySelectorAll('.tab')[0].classList.add('active');
+                document.getElementById('chatView').classList.add('active');
+                if (chatActions) chatActions.style.display = 'flex';
+            } else if (tab === 'jobs') {
+                document.querySelectorAll('.tab')[1].classList.add('active');
+                document.getElementById('jobsView').classList.add('active');
+                loadJobs();
+            } else if (tab === 'settings') {
+                document.querySelectorAll('.tab')[2].classList.add('active');
+                document.getElementById('settingsView').classList.add('active');
+                loadSettings();
+            }
+        }
+
+        function loadSettings() {
+            if (!currentAgent) return;
+            const settings = currentAgent.settings || {};
+            document.getElementById('slackWebhook').value = settings.slack_webhook_url || '';
+            document.getElementById('discordWebhook').value = settings.discord_webhook_url || '';
+            document.getElementById('settingsSaveStatus').innerText = '';
+        }
+
+        async function saveAgentSettings() {
+            if (!currentAgent) return;
+            const slack = document.getElementById('slackWebhook').value.trim();
+            const discord = document.getElementById('discordWebhook').value.trim();
+            
+            const newSettings = {};
+            if (slack) newSettings.slack_webhook_url = slack;
+            if (discord) newSettings.discord_webhook_url = discord;
+            
+            try {
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+                const res = await fetch(`/agents/${currentAgent.id}/settings`, {
+                    method: 'PATCH',
+                    headers: headers,
+                    body: JSON.stringify({ settings: newSettings })
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                
+                const updatedAgent = await res.json();
+                currentAgent.settings = updatedAgent.settings;
+                document.getElementById('settingsSaveStatus').innerText = 'Settings saved successfully!';
+                setTimeout(() => { document.getElementById('settingsSaveStatus').innerText = ''; }, 3000);
+            } catch (e) {
+                alert('Failed to save settings: ' + e.message);
+            }
+        }
+
+        async function loadJobs() {
+            if (!currentAgent) return;
+            const container = document.getElementById('jobsList');
+            container.innerHTML = '<div class="empty-state">Loading...</div>';
+
+            try {
+                const res = await fetch(`/agents/${currentAgent.id}/jobs/`, { headers: getAuthHeaders() });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const jobs = await res.json();
+
+                let tableRows = '';
+                if (jobs.length === 0) {
+                    tableRows = `<tr><td colspan="5" style="text-align:center; color: var(--text-muted); padding: 32px;">No cron jobs yet. Add one below.</td></tr>`;
+                } else {
+                    jobs.forEach(j => {
+                        const date = new Date(j.created_at).toLocaleString();
+                        const toggleColor = j.is_active ? '#ff4a4a' : '#4ade80';
+                        const toggleText = j.is_active ? 'Stop' : 'Start';
+                        tableRows += `
+                            <tr style="opacity: ${j.is_active ? '1' : '0.5'};">
+                                <td><span class="badge" style="background: ${j.is_active ? 'var(--primary)' : 'var(--border)'}">${j.schedule}</span></td>
+                                <td style="color: var(--text-main);">${j.task_description}</td>
+                                <td style="color: var(--text-muted); font-size: 12px;">${date}</td>
+                                <td style="color: var(--text-muted); font-size: 12px;">#${j.id}</td>
+                                <td>
+                                    <button style="border:none; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor:pointer; color: white; background: ${toggleColor};" onclick="toggleJob(${j.id})">${toggleText}</button>
+                                    <button style="border:none; padding: 4px; border-radius: 4px; background: var(--back-lighter); color: var(--text-main); cursor: pointer;" title="View Logs" onclick="viewJobLogs(${j.id})">&#x1F4DC; Logs</button>
+                                    <button style="border:none; padding: 4px; border-radius: 4px; background: transparent; cursor: pointer;" title="Delete" onclick="deleteJob(${j.id})">&#x1F5D1;</button>
+                                </td>
+                            </tr>`;
+                    });
+                }
+
+                container.innerHTML = `
+                    <div class="jobs-toolbar">
+                        <h2>Cron Jobs — ${currentAgent.name}</h2>
+                    </div>
+                    <div class="add-job-form">
+                        <input id="newSchedule" placeholder="Schedule (e.g. '0 9 * * *' or '2026-03-15T09:30:00')" style="width: 300px;" />
+                        <input id="newTask" placeholder="Task description" style="flex: 1;" />
+                        <button onclick="addJob()">+ Add Job</button>
+                    </div>
+                    <table class="jobs-table">
+                        <thead><tr>
+                            <th>Schedule</th>
+                            <th>Task</th>
+                            <th>Created</th>
+                            <th>ID</th>
+                            <th>Actions</th>
+                        </tr></thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>`;
+            } catch (e) {
+                container.innerHTML = `<div class="empty-state">Failed to load jobs: ${e.message}</div>`;
+            }
+        }
+
+        async function addJob() {
+            const schedule = document.getElementById('newSchedule').value.trim();
+            const task = document.getElementById('newTask').value.trim();
+            if (!schedule || !task || !currentAgent) return;
+
+            try {
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+                const res = await fetch(`/agents/${currentAgent.id}/jobs/`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ schedule, task_description: task })
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                // Refresh the tab
+                loadJobs();
+            } catch (e) {
+                alert('Failed to add job: ' + e.message);
+            }
+        }
+
+        async function toggleJob(jobId) {
+            if (!currentAgent) return;
+            try {
+                const res = await fetch(`/agents/${currentAgent.id}/jobs/${jobId}/toggle`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                loadJobs();
+            } catch (e) {
+                alert('Failed to toggle job: ' + e.message);
+            }
+        }
+
+        async function deleteJob(jobId) {
+            if (!currentAgent) return;
+            if (!confirm('Are you sure you want to delete this job?')) return;
+            try {
+                const res = await fetch(`/agents/${currentAgent.id}/jobs/${jobId}`, {
+                    method: 'DELETE',
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                loadJobs();
+            } catch (e) {
+                alert('Failed to delete job: ' + e.message);
+            }
+        }
+
+        async function viewJobLogs(jobId) {
+            if (!currentAgent) return;
+            document.getElementById('logOverlay').style.display = 'flex';
+            const logContent = document.getElementById('logContent');
+            logContent.innerHTML = 'Loading...';
+
+            try {
+                const res = await fetch(`/agents/${currentAgent.id}/jobs/${jobId}/logs`, {
+                    headers: getAuthHeaders()
+                });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const logs = await res.json();
+                
+                if (logs.length === 0) {
+                    logContent.innerHTML = 'No execution logs found for this job yet.';
+                    return;
+                }
+
+                let html = '';
+                logs.forEach(log => {
+                    const ts = new Date(log.created_at).toLocaleString();
+                    const color = log.source === 'error' ? '#ff4a4a' : '#4ade80';
+                    html += `<div style="margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #333;">
+                        <div style="color: #888; margin-bottom: 4px;">[${ts}] <strong style="color: ${color}">${log.source.toUpperCase()}</strong></div>
+                        <div style="color: #fff;">${log.content}</div>
+                    </div>`;
+                });
+                logContent.innerHTML = html;
+            } catch (e) {
+                logContent.innerHTML = `<div style="color: #ffaaaa;">Failed to load logs: ${e.message}</div>`;
+            }
+        }
+
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const msg = input.value.trim();
+            if (!msg || !currentAgent) return;
+
+            input.value = '';
+            appendMessage('user', msg);
+            
+            const btn = document.getElementById('sendBtn');
+            btn.innerHTML = '<span class="loading"></span>';
+            btn.disabled = true;
+
+            try {
+                const headers = { ...getAuthHeaders(), 'Content-Type': 'application/json' };
+                const res = await fetch(`/agents/${currentAgent.id}/chat`, {
+                    method: 'POST',
+                    headers: headers,
+                    body: JSON.stringify({ message: msg })
+                });
+                
+                if(!res.ok) throw new Error("HTTP " + res.status);
+                
+                const data = await res.json();
+                
+                appendMessage('agent', data.response || "Task executed.", data.tool_calls);
+                
+                // If it spawned an agent, refresh the list eventually.
+                if (data.tool_calls && data.tool_calls.length > 0) {
+                    setTimeout(() => loadUserAgents(), 1000);
+                }
+                
+            } catch (e) {
+                appendMessage('agent', `[Connection Error: ${e.message}]`);
+            } finally {
+                btn.innerHTML = 'Send';
+                btn.disabled = false;
+            }
+        }
+
+        function appendMessage(sender, text, toolCalls = null) {
+            const log = document.getElementById('chatLog');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'msg-container';
+            
+            let toolsHtml = '';
+            if (toolCalls && toolCalls.length > 0) {
+                toolCalls.forEach(tc => {
+                    toolsHtml += `<div class="tool-call">System Call: <strong>${tc.name}</strong><br>${JSON.stringify(tc.args)}</div>`;
+                });
+            }
+            
+            // Format text basic markup
+            const formattedText = text.replace(/\n/g, '<br>');
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `msg ${sender}`;
+            msgDiv.innerHTML = `${formattedText} ${toolsHtml}`;
+            
+            wrapper.appendChild(msgDiv);
+            log.appendChild(wrapper);
+            
+            log.scrollTop = log.scrollHeight;
+        }
+
+        // Boot
+        checkAuth();
+    </script>
+</body>
+</html>
